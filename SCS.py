@@ -222,14 +222,12 @@ class StochasticConjugateSubgradientAlgorithm:
 
 
 class SGDBaseline:
-    def __init__(self, kernel=None, gamma_rbf=0.1,
-                 lambda_reg=0.01, eta=0.01, verbose=False):
+    def __init__(self, kernel=None, gamma_rbf=0.1, eta=0.01, verbose=False):
         if not kernel:
             self.kernel = RBFKernel(gamma_rbf)
         else:
             self.kernel = kernel
         self.gamma_rbf = gamma_rbf
-        self.lambda_reg = lambda_reg
         self.eta = eta
         self.verbose = verbose
  
@@ -260,13 +258,19 @@ class SGDBaseline:
  
             inner = np.dot(alpha, Q_i)
             margin = self.W_k[i] * inner
- 
-            grad_reg = self.lambda_reg * inner * Q_i
- 
-            if margin < 1:
-                gradient = grad_reg - self.W_k[i] * Q_i
+            
+            # Calculate the exact gradient of the quadratic term
+            # Warning computing this on the fly without precomputed Q is very slow
+            if precompute_kernel:
+                grad_quad = Q @ alpha
             else:
-                gradient = grad_reg
+                grad_quad = np.array([np.dot(alpha, self._compute_kernel_row(X_train, x)) for x in X_train])
+            
+            if margin < 1:
+                # Add hinge loss subgradient for active margin
+                gradient = grad_quad - self.W_k[i] * Q_i
+            else:
+                gradient = grad_quad
  
             alpha = alpha - self.eta * gradient
  
@@ -289,25 +293,23 @@ class SGDBaseline:
         return np.array(predictions)
  
     @staticmethod
-    def eval_f(alpha, Q, W, lambda_reg):
-        m = len(W)
-        return 0.5 * lambda_reg * alpha @ Q @ alpha \
-            + np.mean(np.maximum(0, 1 - W * (Q @ alpha)))
+    def eval_f(alpha, Q, W):
+        return 0.5 * alpha @ Q @ alpha + np.mean(np.maximum(0, 1 - W * (Q @ alpha)))
  
     def _compute_kernel_row(self, X, y):
         return self.kernel(X, y)
  
 
 class PegasosBaseline:
-    def __init__(self, kernel=None, gamma_rbf=0.1,
-                 lambda_param=0.01, verbose=False):
+    def __init__(self, kernel=None, gamma_rbf=0.1, verbose=False):
         if not kernel:
             self.kernel = RBFKernel(gamma_rbf)
         else:
             self.kernel = kernel
         self.gamma_rbf = gamma_rbf
-        self.lambda_param = lambda_param
         self.verbose = verbose
+        # hardcoded lambda_param for Pegasos
+        self.lambda_param = 1.0 
  
         self.alpha = None
         self.S_k = None
@@ -345,7 +347,7 @@ class PegasosBaseline:
             # evaluate the objective function if the full kernel matrix is available
             if self.verbose and precompute_kernel and t % max(1, max_iter // 10) == 0:
                 tmp_alpha = (1.0 / (self.lambda_param * t)) * alpha_count * self.W_k
-                f_val = self.eval_f(tmp_alpha, Q, self.W_k, self.lambda_param)
+                f_val = self.eval_f(tmp_alpha, Q, self.W_k)
                 print(f"[Pegasos] iter {t}/{max_iter}  f={f_val:.4f}  "
                       f"nnz={int(np.sum(alpha_count > 0))}")
  
@@ -363,10 +365,8 @@ class PegasosBaseline:
         return np.array(predictions)
  
     @staticmethod
-    def eval_f(alpha, Q, W, lambda_param):
-        m = len(W)
-        return 0.5 * lambda_param * alpha @ Q @ alpha \
-            + np.mean(np.maximum(0, 1 - W * (Q @ alpha)))
+    def eval_f(alpha, Q, W):
+        return 0.5 * alpha @ Q @ alpha + np.mean(np.maximum(0, 1 - W * (Q @ alpha)))
  
     def _compute_kernel_row(self, X, y):
         return self.kernel(X, y)
