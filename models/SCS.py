@@ -1,30 +1,12 @@
-7
-from abc import ABC, abstractmethod
 import numpy as np
-class Kernel(ABC):
+from .Kernels import *
 
-    @abstractmethod
-    def __call__(self,X,y):
-        pass
+from .Imodel import Imodel
+class StochasticConjugateSubgradientAlgorithm(Imodel):
 
-class RBFKernel(Kernel):
-
-    def __init__(self,gamma_rbf):
-        self.gamma_rbf = gamma_rbf
-    def __call__(self,X,y):
-        dists=np.sum((X-y)**2,axis=1)
-        return np.exp(-self.gamma_rbf * dists)
-
-class LinearKernel(Kernel):
-    def __init__(self):
-        pass
-    def __call__(self,X,y):
-        return np.dot(X,y)
-
-
-class StochasticConjugateSubgradientAlgorithm:
     def __init__(self, kernel:Kernel=None, gamma_rbf=0.1, epsilon=1e-3, delta_min=1e-4,delta_max=5.0,
                  m1=0.3,m2=0.25,ls_n=5,eta_1=0.3,eta_2=0.1,gamma=1.2,verbose=False):
+        super().__init__(kernel)
         if not kernel:
             self.kernel=RBFKernel(gamma_rbf)
         else:
@@ -53,6 +35,7 @@ class StochasticConjugateSubgradientAlgorithm:
         self.S_k=x_sample
         self.W_k=y_sample
         Q_k=np.zeros((batch_size,batch_size))
+
         for i in range(batch_size):
             Q_k[i]=self._compute_kernel_row(x_sample,x_sample[i])
         alpha_hat=np.zeros(batch_size)
@@ -112,7 +95,6 @@ class StochasticConjugateSubgradientAlgorithm:
             if lhs_cond and rhs_cond:
                 alpha_hat = beta_k
                 delta_k = min(self.gamma * delta_k, self.delta_max)
-
             else:
                 alpha_hat = beta_hat_prev
                 delta_k = max(delta_k / self.gamma, self.delta_min)
@@ -146,7 +128,7 @@ class StochasticConjugateSubgradientAlgorithm:
             g_new=self._compute_subgradient(alpha_new,Q,W)
             int_L=(f_new-f_val)<=-self.m1*np.dot(d,d)*step_t
             dir_der=np.dot(g_new,d)
-            int_R=(0>dir_der) and (dir_der>=self.m2*np.dot(d,d))
+            int_R=(0<dir_der) and (dir_der>=self.m2*np.dot(d,d))
             return int_L,int_R
         b = delta_k / self.ls_n
         norm_d = np.linalg.norm(d)
@@ -223,158 +205,6 @@ class StochasticConjugateSubgradientAlgorithm:
         return X[ds_idx],y[ds_idx]
 
 
-class SGDBaseline:
-    def __init__(self, kernel=None, gamma_rbf=0.1, eta=0.01, verbose=False):
-        if not kernel:
-            self.kernel = RBFKernel(gamma_rbf)
-        else:
-            self.kernel = kernel
-        self.gamma_rbf = gamma_rbf
-        self.eta = eta
-        self.verbose = verbose
-        self.history = []
-        self.alpha = None
-        self.S_k = None
-        self.W_k = None
- 
-    def fit(self, X_train, y_train, max_iter=100, precompute_kernel=False):
-        m_samples, n_features = X_train.shape
-        self.S_k = X_train
-        self.W_k = y_train
- 
-        # Only precompute the full kernel matrix if explicitly requested, avoiding problems with large datasets
-        if precompute_kernel:
-            Q = np.zeros((m_samples, m_samples))
-            for i in range(m_samples):
-                Q[i] = self._compute_kernel_row(X_train, X_train[i])
-        else:
-            Q = None
- 
-        alpha = np.zeros(m_samples)
- 
-        for t in range(1, max_iter + 1):
-            i = np.random.randint(0, m_samples)
- 
-            # Retrieve the precomputed row or compute it on the fly
-            Q_i = Q[i] if precompute_kernel else self._compute_kernel_row(X_train, X_train[i])
- 
-            inner = np.dot(alpha, Q_i)
-            margin = self.W_k[i] * inner
-            
-            # Calculate the exact gradient of the quadratic term
-            # Warning computing this on the fly without precomputed Q is very slow
-            if precompute_kernel:
-                grad_quad = Q @ alpha
-            else:
-                grad_quad = np.array([np.dot(alpha, self._compute_kernel_row(X_train, x)) for x in X_train])
-            
-            if margin < 1:
-                # Add hinge loss subgradient for active margin
-                gradient = grad_quad - self.W_k[i] * Q_i
-            else:
-                gradient = grad_quad
- 
-            alpha = alpha - self.eta * gradient
-            if precompute_kernel:
-                f_val = self.eval_f(alpha, Q, self.W_k)
-                self.history.append(f_val)
-            # Only evaluate the objective function if the full kernel matrix is available
-            if self.verbose and precompute_kernel and t % max(1, max_iter // 10) == 0:
-                f_val = self.eval_f(alpha, Q, self.W_k)
-                print(f"[SGD] iter {t}/{max_iter}  f={f_val:.4f}")
- 
-        self.alpha = alpha
 
  
-    def predict(self, X_new):
-        if self.alpha is None or self.S_k is None:
-            raise ValueError("The model must be trained via fit() before making predictions.")
- 
-        predictions = []
-        for x_test in X_new:
-            kernel_row = self._compute_kernel_row(self.S_k, x_test)
-            score = np.dot(self.alpha, kernel_row)
-            predictions.append(1 if score >= 0 else -1)
-        return np.array(predictions)
- 
-    @staticmethod
-    def eval_f(alpha, Q, W):
-        return 0.5 * alpha @ Q @ alpha + np.mean(np.maximum(0, 1 - W * (Q @ alpha)))
- 
-    def _compute_kernel_row(self, X, y):
-        return self.kernel(X, y)
- 
 
-class PegasosBaseline:
-    def __init__(self, kernel=None, gamma_rbf=0.1, verbose=False):
-        if not kernel:
-            self.kernel = RBFKernel(gamma_rbf)
-        else:
-            self.kernel = kernel
-        self.gamma_rbf = gamma_rbf
-        self.verbose = verbose
-        # hardcoded lambda_param for Pegasos
-        self.lambda_param = 1.0 
-        self.history = []
-        self.alpha = None
-        self.S_k = None
-        self.W_k = None
- 
-    def fit(self, X_train, y_train, max_iter=100, precompute_kernel=False):
-        m_samples, n_features = X_train.shape
-        self.S_k = X_train
-        self.W_k = y_train
- 
-        # Only precompute the full kernel matrix if explicitly requested, avoiding problems with large datasets
-        if precompute_kernel:
-            Q = np.zeros((m_samples, m_samples))
-            for i in range(m_samples):
-                Q[i] = self._compute_kernel_row(X_train, X_train[i])
-        else:
-            Q = None
- 
-        alpha_count = np.zeros(m_samples)
- 
-        for t in range(1, max_iter + 1):
-            eta_t = 1.0 / (self.lambda_param * t)
- 
-            i = np.random.randint(0, m_samples)
- 
-            # from precomputed Q or compute on the fly
-            Q_i = Q[i] if precompute_kernel else self._compute_kernel_row(X_train, X_train[i])
- 
-            inner = eta_t * np.sum(alpha_count * self.W_k * Q_i)
-            margin = self.W_k[i] * inner
- 
-            if margin < 1:
-                alpha_count[i] += 1
-            if precompute_kernel:
-                tmp_alpha = (1.0 / (self.lambda_param * t)) * alpha_count * self.W_k
-                f_val = self.eval_f(tmp_alpha, Q, self.W_k)
-                self.history.append(f_val)
-            # evaluate the objective function if the full kernel matrix is available
-            if self.verbose and precompute_kernel and t % max(1, max_iter // 10) == 0:
-                tmp_alpha = (1.0 / (self.lambda_param * t)) * alpha_count * self.W_k
-                f_val = self.eval_f(tmp_alpha, Q, self.W_k)
-                print(f"[Pegasos] iter {t}/{max_iter}  f={f_val:.4f}  "
-                      f"nnz={int(np.sum(alpha_count > 0))}")
-
-        self.alpha = (1.0 / (self.lambda_param * max_iter)) * alpha_count * self.W_k
- 
-    def predict(self, X_new):
-        if self.alpha is None or self.S_k is None:
-            raise ValueError("The model must be trained via fit() before making predictions.")
- 
-        predictions = []
-        for x_test in X_new:
-            kernel_row = self._compute_kernel_row(self.S_k, x_test)
-            score = np.dot(self.alpha, kernel_row)
-            predictions.append(1 if score >= 0 else -1)
-        return np.array(predictions)
- 
-    @staticmethod
-    def eval_f(alpha, Q, W):
-        return 0.5 * alpha @ Q @ alpha + np.mean(np.maximum(0, 1 - W * (Q @ alpha)))
- 
-    def _compute_kernel_row(self, X, y):
-        return self.kernel(X, y)
