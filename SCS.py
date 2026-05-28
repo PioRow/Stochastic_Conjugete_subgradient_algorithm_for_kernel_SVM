@@ -44,6 +44,7 @@ class StochasticConjugateSubgradientAlgorithm:
         self.eta_1 = eta_1
         self.eta_2 = eta_2
         self.gamma=gamma
+        self.history = []
 
     def fit(self,X_train,y_train,max_iter=100,batch_size=10):
         m_samples,n_features = X_train.shape
@@ -116,6 +117,7 @@ class StochasticConjugateSubgradientAlgorithm:
                 alpha_hat = beta_hat_prev
                 delta_k = max(delta_k / self.gamma, self.delta_min)
             d_k = d_vec_new
+            self.history.append(self.eval_f(alpha_hat, Q_k, self.W_k))
         self.alpha = alpha_hat
 
     def predict(self, X_new):
@@ -230,7 +232,7 @@ class SGDBaseline:
         self.gamma_rbf = gamma_rbf
         self.eta = eta
         self.verbose = verbose
- 
+        self.history = []
         self.alpha = None
         self.S_k = None
         self.W_k = None
@@ -273,13 +275,16 @@ class SGDBaseline:
                 gradient = grad_quad
  
             alpha = alpha - self.eta * gradient
- 
+            if precompute_kernel:
+                f_val = self.eval_f(alpha, Q, self.W_k)
+                self.history.append(f_val)
             # Only evaluate the objective function if the full kernel matrix is available
             if self.verbose and precompute_kernel and t % max(1, max_iter // 10) == 0:
-                f_val = self.eval_f(alpha, Q, self.W_k, self.lambda_reg)
+                f_val = self.eval_f(alpha, Q, self.W_k)
                 print(f"[SGD] iter {t}/{max_iter}  f={f_val:.4f}")
  
         self.alpha = alpha
+
  
     def predict(self, X_new):
         if self.alpha is None or self.S_k is None:
@@ -310,7 +315,7 @@ class PegasosBaseline:
         self.verbose = verbose
         # hardcoded lambda_param for Pegasos
         self.lambda_param = 1.0 
- 
+        self.history = []
         self.alpha = None
         self.S_k = None
         self.W_k = None
@@ -343,14 +348,17 @@ class PegasosBaseline:
  
             if margin < 1:
                 alpha_count[i] += 1
- 
+            if precompute_kernel:
+                tmp_alpha = (1.0 / (self.lambda_param * t)) * alpha_count * self.W_k
+                f_val = self.eval_f(tmp_alpha, Q, self.W_k)
+                self.history.append(f_val)
             # evaluate the objective function if the full kernel matrix is available
             if self.verbose and precompute_kernel and t % max(1, max_iter // 10) == 0:
                 tmp_alpha = (1.0 / (self.lambda_param * t)) * alpha_count * self.W_k
                 f_val = self.eval_f(tmp_alpha, Q, self.W_k)
                 print(f"[Pegasos] iter {t}/{max_iter}  f={f_val:.4f}  "
                       f"nnz={int(np.sum(alpha_count > 0))}")
- 
+
         self.alpha = (1.0 / (self.lambda_param * max_iter)) * alpha_count * self.W_k
  
     def predict(self, X_new):
