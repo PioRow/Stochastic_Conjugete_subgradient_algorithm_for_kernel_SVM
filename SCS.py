@@ -53,7 +53,7 @@ class StochasticConjugateSubgradientAlgorithm:
         self.W_k=y_sample
         Q_k=np.zeros((batch_size,batch_size))
         for i in range(batch_size):
-            Q_k[i]=self._compute_kernel_row(x_sample,y_sample[i])
+            Q_k[i]=self._compute_kernel_row(x_sample,x_sample[i])
         alpha_hat=np.zeros(batch_size)
         d_k=self._compute_subgradient(alpha_hat,Q_k,self.W_k)
         delta_k=1.0
