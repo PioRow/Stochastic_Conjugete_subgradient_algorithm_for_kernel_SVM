@@ -70,7 +70,8 @@ class SGDBaseline(Imodel):
             raise ValueError("The model must be trained via fit() before making predictions.")
 
         predictions = []
-        for x_test in X_new:
+        for i, x_test in enumerate(X_new):
+            
             kernel_row = self._compute_kernel_row(self.S_k, x_test)
             score = np.dot(self.alpha, kernel_row)
             predictions.append(1 if score >= 0 else -1)
