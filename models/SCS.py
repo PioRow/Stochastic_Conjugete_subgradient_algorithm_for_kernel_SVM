@@ -108,14 +108,8 @@ class StochasticConjugateSubgradientAlgorithm(Imodel):
 
         predictions = []
         for x_test in X_new:
-            # Calculate the kernel row interactions between the new testing data point
-            # and all support vector coordinates accumulated in S_k
             kernel_row = self._compute_kernel_row(self.S_k, x_test)
-
-            # Compute the linear combination projection score: sum(alpha_i * K(z_i, z_test))
             score = np.dot(self.alpha, kernel_row)
-
-            # Assign binary classification grouping label based on mathematical sign orientation
             predictions.append(1 if score >= 0 else -1)
         return np.array(predictions)
     @staticmethod
@@ -181,6 +175,10 @@ class StochasticConjugateSubgradientAlgorithm(Imodel):
     def _compute_kernel_row(self,X,y):
         return self.kernel(X,y)
 
+    #TODO
+    # -Grad(f(x_k)):=D_K ,d_{K-1}-> B_k d_{k-1}
+    # B_k=norm(D_k)**2/(D_K'(D_{k}-D_{k-1})
+    #
     def _compute_subgradient(self,alpha,Q,W):
         m=len(W)
         quad_g=Q @ alpha
