@@ -94,7 +94,8 @@ class StochasticConjugateSubgradientAlgorithm(Imodel):
                 alpha_hat = beta_hat_prev
                 delta_k = max(delta_k / self.gamma, self.delta_min)
             d_k = d_vec_new
-            self.history.append(self.eval_f(alpha_hat, Q_k, self.W_k))
+            if record_history:
+                self.history.append(self.eval_f(alpha_hat, Q_k, self.W_k))
         self.alpha = alpha_hat
 
     def predict(self, X_new):
