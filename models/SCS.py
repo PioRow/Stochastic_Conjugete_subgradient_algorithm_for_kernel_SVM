@@ -3,15 +3,10 @@ from .Kernels import *
 
 from .Imodel import Imodel
 class StochasticConjugateSubgradientAlgorithm(Imodel):
-
-    def __init__(self, kernel:Kernel=None, gamma_rbf=0.1, epsilon=1e-3, delta_min=1e-4,delta_max=5.0,
-                 m1=0.3,m2=0.25,ls_n=5,eta_1=0.3,eta_2=0.1,gamma=1.2,verbose=False):
-        super().__init__(kernel)
-        if not kernel:
-            self.kernel=RBFKernel(gamma_rbf)
-        else:
-            self.kernel = kernel
-        self.gamma_rbf = gamma_rbf
+    def __init__(self, kernel=None, epsilon=1e-3, delta_min=1e-4, delta_max=5.0,
+                 m1=0.3, m2=0.25, ls_n=5, eta_1=0.3, eta_2=0.1, gamma=1.2, 
+                 verbose=False):
+        super().__init__(kernel=kernel)
         self.epsilon = epsilon
         self.delta_min = delta_min
         self.delta_max = delta_max
@@ -28,7 +23,7 @@ class StochasticConjugateSubgradientAlgorithm(Imodel):
         self.gamma=gamma
         self.history = []
 
-    def fit(self,X_train,y_train,max_iter=100,batch_size=10):
+    def fit(self,X_train,y_train,max_iter=100,batch_size=10, record_history=False):
         m_samples,n_features = X_train.shape
         self.S_left_idx=np.arange(m_samples)
         x_sample,y_sample=self._sample_ds(X_train,y_train,batch_size)
@@ -112,9 +107,7 @@ class StochasticConjugateSubgradientAlgorithm(Imodel):
             score = np.dot(self.alpha, kernel_row)
             predictions.append(1 if score >= 0 else -1)
         return np.array(predictions)
-    @staticmethod
-    def eval_f(alpha,Q,W):
-        return 0.5* alpha@Q@alpha + np.mean(np.maximum(0,1-W*(Q@alpha)))
+
     def line_search(self,f_val, alpha, d, Q, W, delta_k):
         def check_intersect(step_t):
             alpha_new=alpha+step_t*d
