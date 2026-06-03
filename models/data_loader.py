@@ -3,12 +3,12 @@ import pandas as pd
 import os
 
 DATASET_URLS = {
-    "heart_failure": "https://archive.ics.uci.edu/static/public/519/heart+failure+clinical+records.zip",
-    "breast_cancer": "https://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin/wdbc.data",
-    "wine_quality": "https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv",
-    "avila": "https://archive.ics.uci.edu/static/public/459/avila.zip",
-    "magic_telescope": "https://archive.ics.uci.edu/ml/machine-learning-databases/magic/magic04.data",
-    "room_occupancy": "https://archive.ics.uci.edu/static/public/357/occupancy+detection.zip",
+    "heart_failure": "https://archive.ics.uci.edu/static/public/519/heart+failure+clinical+records.zip",#
+    "breast_cancer": "https://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin/wdbc.data",#
+    "wine_quality": "https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv",#
+    "avila": "https://archive.ics.uci.edu/static/public/459/avila.zip",#
+    "magic_telescope": "https://archive.ics.uci.edu/ml/machine-learning-databases/magic/magic04.data",#
+    "room_occupancy": "https://archive.ics.uci.edu/static/public/357/occupancy+detection.zip",#
     "skin_nonskin": "https://archive.ics.uci.edu/ml/machine-learning-databases/00229/Skin_NonSkin.txt",
     "miniboone": "https://archive.ics.uci.edu/ml/machine-learning-databases/00199/MiniBooNE_PID.txt",
     "hepmass": "https://archive.ics.uci.edu/static/public/347/hepmass.zip"
@@ -23,7 +23,8 @@ def load_dataset(data_path = "./data", subfolder = "room-occupancy"):
     subfolder_path = os.path.join(data_path, subfolder)
     x_path = os.path.join(subfolder_path, "X.csv")
     y_path = os.path.join(subfolder_path, "y.csv")
-
+    if not (os.path.exists(x_path) and os.path.exists(y_path)):
+        return np.array([]), np.array([])
     X = pd.read_csv(x_path, header = 0).values
     y = pd.read_csv(y_path, header = 0).values.ravel()
     y = y.astype(np.int32)
@@ -34,6 +35,7 @@ def load_all_datasets(data_path="./data"):
     all_data = {}
 
     for entry in os.listdir(data_path):
+
         subfolder_path = os.path.join(data_path, entry)
         if not os.path.isdir(subfolder_path):
             continue
@@ -47,6 +49,17 @@ def load_all_datasets(data_path="./data"):
         all_data[entry] = (X, y)
 
     return all_data
+def datasets_names(data_path="./data"):
+    dnames = []
+
+    for entry in os.listdir(data_path):
+        subfolder_path = os.path.join(data_path, entry)
+        if not os.path.isdir(subfolder_path):
+            continue
+        dnames.append(entry)
+
+    return dnames
+
 
 # X, y = load_dataset("breast_cancer")
 # X_wine, y_wine = load_dataset("wine_quality")

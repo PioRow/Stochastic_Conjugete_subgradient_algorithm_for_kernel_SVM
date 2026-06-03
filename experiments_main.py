@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler
-from models.data_loader import load_all_datasets
+from models.data_loader import load_all_datasets,load_dataset,datasets_names
 from models.Kernels import RBFKernel
 from models.Pegasos import PegasosBaseline
 from models.SGD import SGDBaseline
@@ -27,16 +27,19 @@ def standardize_data(X_train, X_test):
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
     return X_train, X_test
-
+def sample(X,y,sample_size):
+    return X,y
 def run_experiments(data_path="./data", epochs=5, runs=5, scs_batch_size=10):
     print("Loading datasets...")
-    datasets = load_all_datasets(data_path=data_path)
+    datasets = datasets_names(data_path=data_path)
     
     results = []
     histories = {}
     etas = [0.0001, 0.001, 0.01, 0.1]
 
-    for dataset_name, (X, y) in datasets.items():
+    for dataset_name in datasets:
+        X,y=load_dataset(data_path, dataset_name)
+
         print(f"\n{'='*50}\nDataset: {dataset_name} | Samples: {X.shape[0]} | Features: {X.shape[1]}\n{'='*50}")
 
         m_samples = int(X.shape[0]*0.8)
@@ -60,6 +63,7 @@ def run_experiments(data_path="./data", epochs=5, runs=5, scs_batch_size=10):
         total_progress = total_combinations * runs
 
         dataset_metrics = {"Dataset": dataset_name, "Samples": X.shape[0], "Features": X.shape[1]}
+
         histories[dataset_name] = {}
 
         pbar = tqdm(total=total_progress, desc=f"GridSearch {dataset_name}", leave=False, ncols=80)
@@ -151,6 +155,6 @@ def run_experiments(data_path="./data", epochs=5, runs=5, scs_batch_size=10):
     return results_df, histories
 
 if __name__ == "__main__":
-    df, history_dict = run_experiments(data_path="./data1", epochs=3, runs=5, scs_batch_size=10)
+    df, history_dict = run_experiments(data_path="./data", epochs=2, runs=10, scs_batch_size=10)
     df.to_csv("experiment_results.csv", index=False)
     

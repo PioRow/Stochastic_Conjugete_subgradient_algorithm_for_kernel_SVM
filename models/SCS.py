@@ -95,7 +95,7 @@ class StochasticConjugateSubgradientAlgorithm(Imodel):
                 delta_k = max(delta_k / self.gamma, self.delta_min)
             d_k = d_vec_new
             if record_history:
-                self.history.append(self.eval_f(alpha_hat, Q_k, self.W_k))
+                self.history.append(self.eval_f_full(alpha_hat, Q_k, X_train,y_train))
         self.alpha = alpha_hat
 
     def predict(self, X_new):
@@ -166,6 +166,15 @@ class StochasticConjugateSubgradientAlgorithm(Imodel):
         lam_str=np.clip(lam,0,1)
         return lam_str* (-d_prev)+(1-lam_str)*g_curr
 
+
+    def eval_f_full(self,alpha,Q,X,y):
+        quad=.5*alpha@Q@alpha
+        hinge=0.
+        m_samples=len(y)
+        for (x_sample,y_sample) in zip(X,y):
+            q=self._compute_kernel_row(self.S_k, x_sample)
+            hinge+= np.maximum(0,1-y_sample*(np.dot(q,alpha)))/m_samples
+        return hinge+quad
     def _compute_kernel_row(self,X,y):
         return self.kernel(X,y)
 
