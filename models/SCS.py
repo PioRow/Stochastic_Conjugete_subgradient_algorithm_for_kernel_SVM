@@ -52,12 +52,14 @@ class StochasticConjugateSubgradientAlgorithm(Imodel):
 
             x_new,y_new=self._sample_ds(X_train,y_train,batch_size)
             if x_new is None:
-                print("Dataset fully consumed. Ending training loop.")
+                if self.verbose:
+                    print("Dataset fully consumed. Ending training loop.")
                 break
             curr_m = len(self.S_k)+batch_size
-            T_x, T_w = self._sample_ds(X_train, y_train, curr_m)
+            T_x, T_w = self._sample_ds(X_train, y_train, curr_m,return_idx=True)
             if T_x is None:
-                print("Insufficient samples remaining to construct validation batch T_k.")
+                if self.verbose:
+                    print("Insufficient samples remaining to construct validation batch T_k.")
                 break
             self.S_k = np.vstack([self.S_k, x_new])
             self.W_k = np.concatenate([self.W_k, y_new])
@@ -192,7 +194,7 @@ class StochasticConjugateSubgradientAlgorithm(Imodel):
             hinge_g=-np.sum(W[acitve_check][:,None]*Q[acitve_check],axis=0)/m
         return hinge_g+quad_g
 
-    def _sample_ds(self,X,y,batch_size):
+    def _sample_ds(self,X,y,batch_size,return_idx=False):
 
         if len(self.S_left_idx)<batch_size:
             return None,None
@@ -202,7 +204,8 @@ class StochasticConjugateSubgradientAlgorithm(Imodel):
             replace=False
         )
         ds_idx=self.S_left_idx[choice_idx]
-        self.S_left_idx=np.delete(self.S_left_idx,choice_idx)
+        if not return_idx:
+            self.S_left_idx=np.delete(self.S_left_idx,choice_idx)
         return X[ds_idx],y[ds_idx]
 
 

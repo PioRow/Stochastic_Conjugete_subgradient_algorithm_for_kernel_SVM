@@ -14,7 +14,7 @@ DATASET_URLS = {
     "hepmass": "https://archive.ics.uci.edu/static/public/347/hepmass.zip"
 }
 
-def load_dataset(data_path = "./data", subfolder = "room-occupancy"):
+def load_dataset(data_path = "./data", subfolder = "room-occupancy",header=None):
     """
     Loads a dataset from a relative data path and subfolder, expecting X.csv and y.csv inside.
     Returns (X, y) as numpy arrays (no column names).
@@ -25,8 +25,8 @@ def load_dataset(data_path = "./data", subfolder = "room-occupancy"):
     y_path = os.path.join(subfolder_path, "y.csv")
     if not (os.path.exists(x_path) and os.path.exists(y_path)):
         return np.array([]), np.array([])
-    X = pd.read_csv(x_path, header = 0).values
-    y = pd.read_csv(y_path, header = 0).values.ravel()
+    X = pd.read_csv(x_path, header = header).values
+    y = pd.read_csv(y_path, header = header).values.ravel()
     y = y.astype(np.int32)
 
     return X, y
