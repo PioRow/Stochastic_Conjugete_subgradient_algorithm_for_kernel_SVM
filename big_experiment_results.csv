@@ -1,0 +1,2 @@
+Dataset,Samples,Features,Pegasos_Acc,Pegasos_Time,SGD_Acc,SGD_Time,SCS_Acc,SCS_Time,SCS_Params,Pegasos_Params,SGD_Params
+mini_boone,120000,50,0.7204166666666667,1779.1610615253448,0.7203333333333334,1773.8550550937653,0.7203513333333334,2210.7318818867206625,{'gamma': 0.02},{'gamma': 0.02},"{'gamma': 0.0.2, 'eta': 0.001}"
