@@ -180,7 +180,8 @@ def big_ds_experiment(data_path="./data", scs_batch_size=50,datasets=None):
 
         std_max_iter = int( m_samples)
         scs_max_iter = max(int((m_samples) / scs_batch_size), 50)
-
+        std_max_iter=100
+        scs_max_iter=100
         # Define configurations to test
         models_configs = {
             "Pegasos": {"gamma": gamma},
@@ -212,16 +213,31 @@ def big_ds_experiment(data_path="./data", scs_batch_size=50,datasets=None):
                 model = StochasticConjugateSubgradientAlgorithm(kernel=RBFKernel(cfg["gamma"]), verbose=False)
                 kwargs = {"max_iter": scs_max_iter, "batch_size": scs_batch_size}
 
-            kwargs.update({"X_train": X_train, "y_train": y_train, "record_history": True})
-            start=time.time()
+            print(f"[{model_name}]  test...")
+            kwargs.update({"X_train": X_train, "y_train": y_train, "record_history": False})
+            start=time.perf_counter()
             model.fit(**kwargs)
-            elapsed = time.time() - start
+            elapsed = time.perf_counter() - start
+
             y_pred=model.predict(X_test)
             acc=accuracy_score(y_test, y_pred)
+            print(f"[{model_name}]  results :{acc}  time:{elapsed} [s]")
             # Store results
             dataset_metrics[f"{model_name}_Acc"] = acc
             dataset_metrics[f"{model_name}_Time"] = elapsed
             dataset_metrics[f"{model_name}_Params"] = str(cfg)
+
+            if model_name == "Pegasos":
+                model = PegasosBaseline(kernel=RBFKernel(cfg["gamma"]), verbose=False)
+                kwargs = {"max_iter": std_max_iter, "precompute_kernel": False}
+            elif model_name == "SGD":
+                model = SGDBaseline(kernel=RBFKernel(cfg["gamma"]), eta=cfg["eta"], verbose=False)
+                kwargs = {"max_iter": std_max_iter, "precompute_kernel": False}
+            elif model_name == "SCS":
+                model = StochasticConjugateSubgradientAlgorithm(kernel=RBFKernel(cfg["gamma"]), verbose=False)
+                kwargs = {"max_iter": scs_max_iter, "batch_size": scs_batch_size}
+            kwargs.update({"X_train": X_train, "y_train": y_train, "record_history": True})
+            model.fit(**kwargs)
             histories[dataset_name][model_name] = model.history
 
         results.append(dataset_metrics)
@@ -234,6 +250,10 @@ def big_ds_experiment(data_path="./data", scs_batch_size=50,datasets=None):
 
     return results_df, histories
 if __name__ == "__main__":
-    df, history_dict = run_experiments(data_path="./data", epochs=1, runs=10, scs_batch_size=10)
-    df.to_csv("experiment_results.csv", index=False)
-    json.dump(history_dict, open("experiment_history.json", "w"))
+    #df, history_dict = run_experiments(data_path="./data", epochs=1, runs=10, scs_batch_size=10)
+    #df.to_csv("experiment_results.csv", index=False)
+    #json.dump(history_dict, open("experiment_history.json", "w"))
+    big_df,big_histories = big_ds_experiment(data_path="./data", scs_batch_size=4,datasets=['mini_boone'])
+    big_df.to_csv("big_experiment_results_100its.csv", index=False)
+    json.dump(big_histories, open("big_experiment_history_100its.json", "w"))
+
