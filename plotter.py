@@ -35,5 +35,5 @@ def plot_history(experiment,data):
 if __name__ == "__main__":
     data = load_data()
     plot_histories(data)
-    d2=load_data("big_experiment_history_100its.json")
+    d2=load_data("results/big_experiment_history_100its.json")
     plot_histories(d2)

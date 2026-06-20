@@ -255,5 +255,5 @@ if __name__ == "__main__":
     #json.dump(history_dict, open("experiment_history.json", "w"))
     big_df,big_histories = big_ds_experiment(data_path="./data", scs_batch_size=4,datasets=['mini_boone'])
     big_df.to_csv("big_experiment_results_100its.csv", index=False)
-    json.dump(big_histories, open("big_experiment_history_100its.json", "w"))
+    json.dump(big_histories, open("results/big_experiment_history_100its.json", "w"))
 
